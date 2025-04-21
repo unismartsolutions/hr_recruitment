@@ -82,7 +82,7 @@ sudo -u postgres psql
 
 ```sql
 CREATE DATABASE hr_recruitment;
-CREATE USER hr_user WITH PASSWORD 'your_secure_password';
+CREATE USER hr_user WITH PASSWORD 'test123';
 GRANT ALL PRIVILEGES ON DATABASE hr_recruitment TO hr_user;
 \q
 ```
