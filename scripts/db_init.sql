@@ -1,8 +1,15 @@
-
 -- Initialize HR Recruitment System Database
 
--- Create extension for UUID generation
+-- Create extensions
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- Try to create pg_trgm extension (if it fails, we'll use alternative indexing)
+DO $$
+BEGIN
+    CREATE EXTENSION IF NOT EXISTS "pg_trgm";
+    EXCEPTION WHEN OTHERS THEN
+    RAISE NOTICE 'pg_trgm extension not available. Using alternative indexing.';
+END $$;
 
 -- Drop tables if they exist (for clean initialization)
 DROP TABLE IF EXISTS candidates;
@@ -43,18 +50,38 @@ CREATE INDEX idx_candidates_experience_level ON candidates(experience_level);
 CREATE INDEX idx_candidates_industry ON candidates(industry);
 CREATE INDEX idx_candidates_name ON candidates(name);
 
--- Create search function for full text search on skills array
+-- Create search function for array to string conversion
 CREATE OR REPLACE FUNCTION array_to_string_immutable(anyarray, text) 
 RETURNS text AS $$ 
     SELECT array_to_string($1, $2); 
 $$ LANGUAGE SQL IMMUTABLE;
 
--- Create an index for the array_to_string function
-CREATE INDEX idx_candidates_skills ON candidates 
-USING gin (array_to_string_immutable(skills, ',') gin_trgm_ops);
+-- Create indexes based on available extensions
+DO $$
+DECLARE
+    trgm_exists BOOLEAN;
+BEGIN
+    -- Check if pg_trgm extension is available
+    SELECT EXISTS (
+        SELECT 1 FROM pg_extension WHERE extname = 'pg_trgm'
+    ) INTO trgm_exists;
 
-CREATE INDEX idx_candidates_certifications ON candidates 
-USING gin (array_to_string_immutable(certifications, ',') gin_trgm_ops);
+    -- If pg_trgm is available, create GIN indexes with trigram support
+    IF trgm_exists THEN
+        EXECUTE 'CREATE INDEX idx_candidates_skills ON candidates 
+                USING gin (array_to_string_immutable(skills, '','') gin_trgm_ops)';
+        
+        EXECUTE 'CREATE INDEX idx_candidates_certifications ON candidates 
+                USING gin (array_to_string_immutable(certifications, '','') gin_trgm_ops)';
+    ELSE
+        -- Otherwise, create standard btree indexes
+        EXECUTE 'CREATE INDEX idx_candidates_skills ON candidates 
+                USING btree (array_to_string_immutable(skills, '',''))';
+        
+        EXECUTE 'CREATE INDEX idx_candidates_certifications ON candidates 
+                USING btree (array_to_string_immutable(certifications, '',''))';
+    END IF;
+END $$;
 
 -- Create default admin user
 INSERT INTO users (username, email, password_hash, is_admin)
