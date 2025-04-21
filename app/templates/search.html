@@ -1,1 +1,537 @@
+{% extends "base.html" %}
 
+{% block title %}Upload CV - HR Recruitment System{% endblock %}
+
+{% block styles %}
+<style>
+    .dropzone {
+        border: 2px dashed #0d6efd;
+        border-radius: 5px;
+        padding: 25px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    
+    .dropzone:hover {
+        background-color: rgba(13, 110, 253, 0.05);
+    }
+    
+    .dropzone.drag-over {
+        background-color: rgba(13, 110, 253, 0.1);
+        border-color: #0a58ca;
+    }
+    
+    .hidden {
+        display: none;
+    }
+    
+    .loading-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(255, 255, 255, 0.8);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+    }
+    
+    .spinner-container {
+        background-color: white;
+        padding: 30px;
+        border-radius: 10px;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        text-align: center;
+    }
+    
+    .spinner-border {
+        width: 3rem;
+        height: 3rem;
+    }
+    
+    .field-group {
+        margin-bottom: 15px;
+    }
+    
+    .tag-input {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+        border: 1px solid #ced4da;
+        border-radius: 0.25rem;
+        padding: 5px;
+        min-height: 38px;
+    }
+    
+    .tag {
+        background-color: #e9ecef;
+        padding: 5px 10px;
+        border-radius: 3px;
+        display: flex;
+        align-items: center;
+    }
+    
+    .tag .remove {
+        margin-left: 5px;
+        cursor: pointer;
+        font-weight: bold;
+    }
+    
+    .tag-input input {
+        border: none;
+        outline: none;
+        flex-grow: 1;
+        min-width: 100px;
+        padding: 5px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0"><i class="fas fa-file-upload me-2"></i>Upload Candidate CV</h4>
+            </div>
+            <div class="card-body">
+                <div id="uploadSection">
+                    <p class="text-muted mb-4">
+                        Upload a candidate's CV in PDF format. The system will automatically extract information 
+                        and allow you to review and edit it before saving.
+                    </p>
+                    
+                    <div class="dropzone" id="dropzone">
+                        <div class="py-4">
+                            <i class="fas fa-file-pdf fa-3x text-primary mb-3"></i>
+                            <h5>Drag & Drop your PDF here</h5>
+                            <p class="text-muted mb-2">or</p>
+                            <button type="button" class="btn btn-primary" id="selectFileBtn">
+                                <i class="fas fa-file-upload me-2"></i>Select File
+                            </button>
+                            <input type="file" id="resumeUpload" class="hidden" accept=".pdf">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="reviewSection" class="hidden">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0"><i class="fas fa-user-edit me-2"></i>Review Candidate Information</h4>
+                </div>
+                <div class="card-body">
+                    <form id="candidateForm">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="name" class="form-label">Full Name</label>
+                                    <input type="text" class="form-control" id="name" name="name" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="email" class="form-label">Email</label>
+                                    <input type="email" class="form-control" id="email" name="email">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="phone" class="form-label">Phone</label>
+                                    <input type="text" class="form-control" id="phone" name="phone">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="age" class="form-label">Age</label>
+                                    <input type="number" class="form-control" id="age" name="age" min="18" max="100">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="experienceLevel" class="form-label">Experience Level</label>
+                                    <select class="form-select" id="experienceLevel" name="experience_level">
+                                        <option value="">Select level</option>
+                                        <option value="Junior">Junior</option>
+                                        <option value="Mid">Mid-level</option>
+                                        <option value="Senior">Senior</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="industry" class="form-label">Industry</label>
+                                    <input type="text" class="form-control" id="industry" name="industry">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="skills" class="form-label">Skills</label>
+                                    <div class="tag-input" id="skillsContainer">
+                                        <input type="text" id="skillInput" placeholder="Type and press Enter">
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="certifications" class="form-label">Certifications</label>
+                                    <div class="tag-input" id="certificationsContainer">
+                                        <input type="text" id="certificationInput" placeholder="Type and press Enter">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-12">
+                                <div class="mb-3">
+                                    <label for="education" class="form-label">Education</label>
+                                    <textarea class="form-control" id="education" name="education" rows="3"></textarea>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="experience" class="form-label">Experience</label>
+                                    <textarea class="form-control" id="experience" name="experience" rows="5"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                        <input type="hidden" id="resumePath" name="resume_path">
+                        <div class="d-flex justify-content-between">
+                            <button type="button" class="btn btn-secondary" id="backBtn">
+                                <i class="fas fa-arrow-left me-2"></i>Back
+                            </button>
+                            <button type="submit" class="btn btn-success" id="saveBtn">
+                                <i class="fas fa-save me-2"></i>Save Candidate
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="loading-overlay hidden" id="loadingOverlay">
+    <div class="spinner-container">
+        <div class="spinner-border text-primary mb-3" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <h5 id="loadingText">Processing CV...</h5>
+        <p class="text-muted">This may take a few moments</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // DOM Elements
+        const dropzone = document.getElementById('dropzone');
+        const fileInput = document.getElementById('resumeUpload');
+        const selectFileBtn = document.getElementById('selectFileBtn');
+        const uploadSection = document.getElementById('uploadSection');
+        const reviewSection = document.getElementById('reviewSection');
+        const backBtn = document.getElementById('backBtn');
+        const candidateForm = document.getElementById('candidateForm');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const loadingText = document.getElementById('loadingText');
+        
+        // Tag input elements
+        const skillsContainer = document.getElementById('skillsContainer');
+        const skillInput = document.getElementById('skillInput');
+        const certificationsContainer = document.getElementById('certificationsContainer');
+        const certificationInput = document.getElementById('certificationInput');
+        
+        // Store skills and certifications
+        let skills = [];
+        let certifications = [];
+        
+        // Set up drag and drop listeners
+        dropzone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropzone.classList.add('drag-over');
+        });
+        
+        dropzone.addEventListener('dragleave', () => {
+            dropzone.classList.remove('drag-over');
+        });
+        
+        dropzone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropzone.classList.remove('drag-over');
+            
+            if (e.dataTransfer.files.length) {
+                handleFileUpload(e.dataTransfer.files[0]);
+            }
+        });
+        
+        // File selection button
+        selectFileBtn.addEventListener('click', () => {
+            fileInput.click();
+        });
+        
+        // Handle file selection
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length) {
+                handleFileUpload(e.target.files[0]);
+            }
+        });
+        
+        // Back button
+        backBtn.addEventListener('click', () => {
+            uploadSection.classList.remove('hidden');
+            reviewSection.classList.add('hidden');
+        });
+        
+        // Tag input for skills
+        skillInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && skillInput.value.trim()) {
+                e.preventDefault();
+                addSkill(skillInput.value.trim());
+                skillInput.value = '';
+            }
+        });
+        
+        // Tag input for certifications
+        certificationInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && certificationInput.value.trim()) {
+                e.preventDefault();
+                addCertification(certificationInput.value.trim());
+                certificationInput.value = '';
+            }
+        });
+        
+        // Save candidate form
+        candidateForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            saveCandidate();
+        });
+        
+        // Functions
+        function handleFileUpload(file) {
+            // Check if file is PDF
+            if (file.type !== 'application/pdf') {
+                showAlert('Invalid file format. Please upload a PDF file.', 'danger');
+                return;
+            }
+            
+            // Show loading screen
+            loadingOverlay.classList.remove('hidden');
+            loadingText.textContent = 'Processing CV...';
+            
+            // Create form data
+            const formData = new FormData();
+            formData.append('resume', file);
+            
+            // Send to server
+            fetch('/process-resume', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                loadingOverlay.classList.add('hidden');
+                
+                if (data.error) {
+                    showAlert(data.error, 'danger');
+                    return;
+                }
+                
+                // Fill form with extracted data
+                fillCandidateForm(data);
+                
+                // Switch to review section
+                uploadSection.classList.add('hidden');
+                reviewSection.classList.remove('hidden');
+            })
+            .catch(error => {
+                loadingOverlay.classList.add('hidden');
+                showAlert('Error processing the CV. Please try again.', 'danger');
+                console.error('Error:', error);
+            });
+        }
+        
+        function fillCandidateForm(data) {
+            // Clear previous data
+            skills = [];
+            certifications = [];
+            skillsContainer.innerHTML = '<input type="text" id="skillInput" placeholder="Type and press Enter">';
+            certificationsContainer.innerHTML = '<input type="text" id="certificationInput" placeholder="Type and press Enter">';
+            
+            // Reassign input elements
+            skillInput = document.getElementById('skillInput');
+            certificationInput = document.getElementById('certificationInput');
+            
+            // Add event listeners again
+            skillInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && skillInput.value.trim()) {
+                    e.preventDefault();
+                    addSkill(skillInput.value.trim());
+                    skillInput.value = '';
+                }
+            });
+            
+            certificationInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && certificationInput.value.trim()) {
+                    e.preventDefault();
+                    addCertification(certificationInput.value.trim());
+                    certificationInput.value = '';
+                }
+            });
+            
+            // Fill basic fields
+            document.getElementById('name').value = data.name || '';
+            document.getElementById('email').value = data.email || '';
+            document.getElementById('phone').value = data.phone || '';
+            document.getElementById('age').value = data.age || '';
+            document.getElementById('experienceLevel').value = data.experience_level || '';
+            document.getElementById('industry').value = data.industry || '';
+            document.getElementById('education').value = data.education || '';
+            document.getElementById('experience').value = data.experience || '';
+            document.getElementById('resumePath').value = data.resume_path || '';
+            
+            // Add skills
+            if (data.skills && Array.isArray(data.skills)) {
+                data.skills.forEach(skill => {
+                    if (skill) addSkill(skill);
+                });
+            }
+            
+            // Add certifications
+            if (data.certifications && Array.isArray(data.certifications)) {
+                data.certifications.forEach(cert => {
+                    if (cert) addCertification(cert);
+                });
+            }
+        }
+        
+        function addSkill(skill) {
+            if (skills.includes(skill)) return;
+            
+            skills.push(skill);
+            const tagElement = createTagElement(skill, removeSkill);
+            skillsContainer.insertBefore(tagElement, skillInput);
+        }
+        
+        function removeSkill(skill) {
+            skills = skills.filter(s => s !== skill);
+        }
+        
+        function addCertification(cert) {
+            if (certifications.includes(cert)) return;
+            
+            certifications.push(cert);
+            const tagElement = createTagElement(cert, removeCertification);
+            certificationsContainer.insertBefore(tagElement, certificationInput);
+        }
+        
+        function removeCertification(cert) {
+            certifications = certifications.filter(c => c !== cert);
+        }
+        
+        function createTagElement(text, removeCallback) {
+            const tag = document.createElement('div');
+            tag.className = 'tag';
+            tag.innerHTML = `${text} <span class="remove">&times;</span>`;
+            
+            const removeBtn = tag.querySelector('.remove');
+            removeBtn.addEventListener('click', () => {
+                tag.remove();
+                removeCallback(text);
+            });
+            
+            return tag;
+        }
+        
+        function saveCandidate() {
+            // Get form data
+            const formData = {
+                name: document.getElementById('name').value,
+                email: document.getElementById('email').value,
+                phone: document.getElementById('phone').value,
+                age: document.getElementById('age').value ? parseInt(document.getElementById('age').value) : null,
+                experience_level: document.getElementById('experienceLevel').value,
+                industry: document.getElementById('industry').value,
+                education: document.getElementById('education').value,
+                experience: document.getElementById('experience').value,
+                skills: skills,
+                certifications: certifications,
+                resume_path: document.getElementById('resumePath').value
+            };
+            
+            // Show loading screen
+            loadingOverlay.classList.remove('hidden');
+            loadingText.textContent = 'Saving candidate...';
+            
+            // Send to server
+            fetch('/save-candidate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(formData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                loadingOverlay.classList.add('hidden');
+                
+                if (data.error) {
+                    showAlert(data.error, 'danger');
+                    return;
+                }
+                
+                // Show success message
+                showAlert('Candidate saved successfully!', 'success');
+                
+                // Reset form and return to upload section
+                candidateForm.reset();
+                skills = [];
+                certifications = [];
+                skillsContainer.innerHTML = '<input type="text" id="skillInput" placeholder="Type and press Enter">';
+                certificationsContainer.innerHTML = '<input type="text" id="certificationInput" placeholder="Type and press Enter">';
+                
+                // Reassign input elements
+                skillInput = document.getElementById('skillInput');
+                certificationInput = document.getElementById('certificationInput');
+                
+                // Add event listeners again
+                skillInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' && skillInput.value.trim()) {
+                        e.preventDefault();
+                        addSkill(skillInput.value.trim());
+                        skillInput.value = '';
+                    }
+                });
+                
+                certificationInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' && certificationInput.value.trim()) {
+                        e.preventDefault();
+                        addCertification(certificationInput.value.trim());
+                        certificationInput.value = '';
+                    }
+                });
+                
+                // Show upload section
+                uploadSection.classList.remove('hidden');
+                reviewSection.classList.add('hidden');
+            })
+            .catch(error => {
+                loadingOverlay.classList.add('hidden');
+                showAlert('Error saving candidate. Please try again.', 'danger');
+                console.error('Error:', error);
+            });
+        }
+        
+        function showAlert(message, type) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+            alertDiv.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            
+            document.querySelector('.flash-messages').appendChild(alertDiv);
+            
+            // Auto close after 5 seconds
+            setTimeout(() => {
+                const bsAlert = new bootstrap.Alert(alertDiv);
+                bsAlert.close();
+            }, 5000);
+        }
+    });
+</script>
+{% endblock %}
